@@ -20,7 +20,8 @@ trait HasGroundTestConstants {
   val errorCodeBits = 4
 }
 
-trait HasGroundTestParameters extends HasAddrMapParameters {
+trait HasGroundTestParameters
+    extends HasAddrMapParameters with HasCoreParameters {
   implicit val p: Parameters
   val tileId = p(GroundTestId)
   val tileSettings = p(GroundTestKey)(tileId)
@@ -29,9 +30,11 @@ trait HasGroundTestParameters extends HasAddrMapParameters {
   val nPTW = tileSettings.ptw
   val memStart = addrMap("mem").start
   val memStartBlock = memStart >> p(CacheBlockOffsetBits)
+  val memStartPage = memStart >> pgIdxBits
 }
 
-class DummyPTW(n: Int)(implicit p: Parameters) extends CoreModule()(p) {
+class DummyPTW(n: Int)(implicit p: Parameters) extends CoreModule()(p)
+    with HasGroundTestParameters {
   val io = new Bundle {
     val requestors = Vec(n, new TLBPTWIO).flip
   }
@@ -40,7 +43,7 @@ class DummyPTW(n: Int)(implicit p: Parameters) extends CoreModule()(p) {
   req_arb.io.in <> io.requestors.map(_.req)
   req_arb.io.out.ready := Bool(true)
 
-  def vpn_to_ppn(vpn: UInt): UInt = vpn(ppnBits - 1, 0)
+  def vpn_to_ppn(vpn: UInt): UInt = vpn(ppnBits - 1, 0) + UInt(memStartPage)
 
   class QueueChannel extends ParameterizedBundle()(p) {
     val ppn = UInt(width = ppnBits)
