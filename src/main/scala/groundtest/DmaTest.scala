@@ -2,14 +2,14 @@ package groundtest
 
 import Chisel._
 import dma._
-import rocket.TLBPTWIO
+import rocket.{TLBPTWIO, HasCoreParameters}
 import uncore.tilelink._
 import uncore.agents.CacheBlockBytes
-import junctions.{HasAddrMapParameters, Timer}
+import junctions.Timer
 import cde.Parameters
 
 class VirtualMemAdapter(implicit val p: Parameters) extends Module
-    with HasAddrMapParameters
+    with HasCoreParameters
     with HasTileLinkParameters {
   val io = new Bundle {
     val vmem = new ClientUncachedTileLinkIO().flip
