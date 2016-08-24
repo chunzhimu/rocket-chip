@@ -17,7 +17,7 @@ trait HasDmaParameters {
   val dmaXactIdBits = log2Up(nDmaXacts)
   val addrBits = p(PAddrBits)
   val dmaStatusBits = 2
-  val dmaWordSizeBits = 2
+  val trackerMemXacts = 4
 }
 
 abstract class DmaModule(implicit val p: Parameters) extends Module with HasDmaParameters
@@ -138,8 +138,8 @@ class DmaTracker(implicit p: Parameters) extends DmaModule()(p)
   }.asUInt
 
   val prefetch_sent = io.mem.acquire.fire() && io.mem.acquire.bits.isPrefetch()
-  val prefetch_busy = Reg(init = UInt(0, tlMaxClientXacts))
-  val (prefetch_id, _) = Counter(prefetch_sent, tlMaxClientXacts)
+  val prefetch_busy = Reg(init = UInt(0, trackerMemXacts))
+  val (prefetch_id, _) = Counter(prefetch_sent, trackerMemXacts)
 
   val base_index = Cat(put_half, put_beat)
   val put_data = Wire(init = Bits(0, tlDataBits))
@@ -249,7 +249,7 @@ class DmaTracker(implicit p: Parameters) extends DmaModule()(p)
     prefetch_busy := prefetch_busy | UIntToOH(prefetch_id)
     when (bytes_left < UInt(blockBytes)) {
       bytes_left := UInt(0)
-      state := s_resp
+      state := s_wait
     } .otherwise {
       bytes_left := bytes_left - UInt(blockBytes)
       dst_block := dst_block + UInt(1)
@@ -282,7 +282,7 @@ class DmaTracker(implicit p: Parameters) extends DmaModule()(p)
     state := s_wait
   }
 
-  when (state === s_wait && get_done && !put_inflight) {
+  when (state === s_wait && get_done && !put_inflight && !prefetch_busy.orR) {
     state := Mux(bytes_left === UInt(0), s_resp, s_get)
   }
 
